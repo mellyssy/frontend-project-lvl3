@@ -1,0 +1,43 @@
+{
+  "name": "frontend-project-lvl3",
+  "version": "1.0.0",
+  "description": "RSS-reader with live refresh",
+  "main": "index.js",
+  "scripts": {
+    "build": "rm -rf dist && webpack",
+    "dev": "webpack serve  --watch"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mellyssy/frontend-project-lvl3.git"
+  },
+  "keywords": [
+    "JavaScript",
+    "Webpack",
+    "Bootstrap",
+    "AJAX"
+  ],
+  "author": "mellyssy",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mellyssy/frontend-project-lvl3/issues"
+  },
+  "homepage": "https://github.com/mellyssy/frontend-project-lvl3#readme",
+  "devDependencies": {
+    "css-loader": "^5.0.0",
+    "eslint": "^7.2.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.1",
+    "html-webpack-plugin": "^4.5.0",
+    "style-loader": "^2.0.0",
+    "webpack": "^5.3.1",
+    "webpack-cli": "^4.1.0",
+    "webpack-dev-server": "^3.11.0"
+  },
+  "dependencies": {
+    "bootstrap": "^4.5.3",
+    "jquery": "^3.5.1",
+    "popper.js": "^1.16.1"
+  }
+}
