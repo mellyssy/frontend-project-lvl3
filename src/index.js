@@ -1,33 +1,42 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
-import * as yup from 'yup';
+import validation from './validation.js';
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.link = formData.get('link');
   state.phase = 'validating';
-  console.log(state);
 };
 
-const schema = yup.string().required().url().matches(/.*\.rss$/);
-
-const validation = (state) => {
-  schema
-    .validate(state.link)
-    .then((value) => {
-      state.feeds.push(value);
-      state.phase = 'loading';
-    })
-    .catch((err) => {
-      state.errors.push(err);
-      state.phase = 'loading';
-    });
+const render = (elements, state) => {
+  switch (state.phase) {
+    case 'validating':
+      elements.submit.setAttribute('disabled', true);
+      break;
+    case 'error':
+      elements.submit.removeAttribute('disabled');
+      elements.input.setCustomValidity(state.errors[0]);
+      elements.error.textContent = elements.input.validationMessage;
+      elements.form.classList.add('was-validated');
+      state.errors = [];
+      break;
+    case 'loading':
+      elements.form.setCustomValidity('');
+      break;
+    default:
+      state.errors.push('Unknown phase');
+  }
 };
 
 const runner = () => {
-  const formElement = document.querySelector('.rss-input');
-  const inputElement = formElement.querySelector('.rss-link');
-  const submitElement = formElement.querySelector('.submit');
+  const elements = {
+    form: document.querySelector('.rss-input'),
+    input: document.querySelector('.rss-link'),
+    submit: document.querySelector('.submit'),
+    posts: document.querySelector('.posts'),
+    feeds: document.querySelector('.feeds'),
+    error: document.querySelector('.invalid-feedback'),
+  };
 
   const state = {
     feeds: [],
@@ -40,10 +49,13 @@ const runner = () => {
   const watchedState = onChange(state, (path, value) => {
     if (value === 'validating') {
       validation(watchedState);
+      render(elements, watchedState);
+    } else if (value === 'error') {
+      render(elements, watchedState);
     }
   });
 
-  formElement.addEventListener('submit', (e) => {
+  elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
     handleSubmit(e, watchedState);
   });
