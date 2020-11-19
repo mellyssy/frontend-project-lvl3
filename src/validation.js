@@ -1,13 +1,13 @@
 import * as yup from 'yup';
 
-const schema = yup.string().required().url().matches(/.*\.rss$/);
+const schema = yup.string().required().url().matches(/rss/);
 
 const handleErrorMsg = (err) => {
   console.log(err.message);
   switch (err.message) {
     case 'this must be a valid URL':
       return 'URL is invalid, check example to see valid URL';
-    case 'this must match the following: "/.*\\.rss$/"':
+    case 'this must match the following: "/rss/"':
       return 'URL is invalid, make sure you\'re passing .rss link';
     case 'this is a required field':
       return 'Don\'t forget to put in URL';
@@ -22,6 +22,7 @@ const validation = (state) => {
     .then((value) => {
       state.feeds.push(value);
       state.phase = 'loading';
+      // TODO: handle copies
     })
     .catch((err) => {
       const msg = handleErrorMsg(err);

@@ -1,11 +1,67 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
+import axios from 'axios';
 import validation from './validation.js';
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.link = formData.get('link');
   state.phase = 'validating';
+};
+
+const renderFeed = ({ feeds, posts }, { data }) => {
+  feeds.innerHTML = '';
+  posts.innerHTML = '';
+  data.forEach((feed) => {
+    const feedItem = `
+    <li class="list-group-item">
+      <h3>${feed.title}</h3>
+      <p>${feed.description}</p>
+    </li>`;
+    feeds.innerHTML += feedItem;
+
+    const postItems = feed.posts.map((post) => {
+      const link = document.createElement('a');
+      link.classList.add('list-group-item', 'list-group-item-action');
+      link.href = post.link;
+      link.target = '_blank';
+      link.textContent = post.title;
+      return link;
+    }).reverse();
+    posts.append(...postItems);
+  });
+};
+
+const parseData = (state, feed) => {
+  const parser = new DOMParser();
+  const rssDocument = parser.parseFromString(feed, 'application/xml');
+  const title = rssDocument.querySelector('channel title').textContent;
+  const description = rssDocument.querySelector('description').textContent;
+  const posts = [...rssDocument.querySelectorAll('item')].map((item) => {
+    const postTitle = item.querySelector('title').textContent;
+    const postLink = item.querySelector('link').textContent;
+    return {
+      title: postTitle,
+      link: postLink,
+    };
+  });
+  state.data.push({
+    title,
+    description,
+    posts,
+  });
+  state.phase = 'rendering';
+};
+
+const loadFeed = (state) => {
+  const url = state.feeds[state.feeds.length - 1];
+  axios.get(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`)
+    .then((response) => {
+      parseData(state, response.data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 const render = (elements, state) => {
@@ -21,7 +77,13 @@ const render = (elements, state) => {
       state.errors = [];
       break;
     case 'loading':
-      elements.form.setCustomValidity('');
+      elements.input.setCustomValidity('');
+      break;
+    case 'rendering':
+      elements.form.reset();
+      elements.submit.removeAttribute('disabled');
+      renderFeed(elements, state);
+      elements.feedsContainer.classList.remove('d-none');
       break;
     default:
       state.errors.push('Unknown phase');
@@ -33,13 +95,15 @@ const runner = () => {
     form: document.querySelector('.rss-input'),
     input: document.querySelector('.rss-link'),
     submit: document.querySelector('.submit'),
-    posts: document.querySelector('.posts'),
-    feeds: document.querySelector('.feeds'),
     error: document.querySelector('.invalid-feedback'),
+    feedsContainer: document.querySelector('.feeds-container'),
+    feeds: document.querySelector('.feeds'),
+    posts: document.querySelector('.posts'),
   };
 
   const state = {
     feeds: [],
+    data: [],
     errors: [],
     phase: 'idle',
     isValid: true,
@@ -51,6 +115,11 @@ const runner = () => {
       validation(watchedState);
       render(elements, watchedState);
     } else if (value === 'error') {
+      render(elements, watchedState);
+    } else if (value === 'loading') {
+      render(elements, watchedState);
+      loadFeed(watchedState);
+    } else if (value === 'rendering') {
       render(elements, watchedState);
     }
   });
