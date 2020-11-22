@@ -1,17 +1,12 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
 import axios from 'axios';
-import validation from './validation.js';
+import { validation, handleError } from './validation.js';
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.link = formData.get('link');
   state.phase = 'validating';
-};
-
-const handleError = (state, error) => {
-  state.errors.push(error);
-  state.phase = 'error';
 };
 
 const renderFeed = ({ feeds, posts }, { data }) => {

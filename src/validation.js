@@ -1,22 +1,38 @@
 import * as yup from 'yup';
+import i18next from 'i18next';
+import resources from './locales.js';
 
 const schema = yup.string().required().url().matches(/rss/);
 
 const isCopy = ({ feeds }, link) => feeds.includes(link);
 
 const handleErrorMsg = (err) => {
+  i18next.init({
+    lng: 'en',
+    debug: true,
+    resources,
+  });
+  console.log(err.message);
   switch (err.message) {
     case 'this must be a valid URL':
-      return 'URL is invalid, check example to see valid URL';
+      return i18next.t('errors.invalidUrl');
     case 'this must match the following: "/rss/"':
-      return 'URL is invalid, make sure you\'re passing .rss link';
+      return i18next.t('errors.rssCheck');
     case 'this is a required field':
-      return 'Don\'t forget to put in URL';
+      return i18next.t('errors.empty');
     case 'feed is in the list':
-      return 'You can\'t add feed twice';
+      return i18next.t('errors.notUnique');
+    case 'Network Error':
+      return i18next.t('errors.network');
     default:
-      return 'Unknown error, what are you doing?';
+      return i18next.t('errors.default');
   }
+};
+
+const handleError = (state, error) => {
+  const msg = handleErrorMsg(error);
+  state.errors.push(msg);
+  state.phase = 'error';
 };
 
 const validation = (state) => {
@@ -29,10 +45,8 @@ const validation = (state) => {
       state.phase = 'loading';
     })
     .catch((err) => {
-      const msg = handleErrorMsg(err);
-      state.errors.push(msg);
-      state.phase = 'error';
+      handleError(state, err);
     });
 };
 
-export default validation;
+export { validation, handleError };
