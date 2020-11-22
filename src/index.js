@@ -9,10 +9,15 @@ const handleSubmit = (e, state) => {
   state.phase = 'validating';
 };
 
+const handleError = (state, error) => {
+  state.errors.push(error);
+  state.phase = 'error';
+};
+
 const renderFeed = ({ feeds, posts }, { data }) => {
   feeds.innerHTML = '';
   posts.innerHTML = '';
-  data.forEach((feed) => {
+  data.reverse().forEach((feed) => {
     const feedItem = `
     <li class="list-group-item">
       <h3>${feed.title}</h3>
@@ -27,7 +32,7 @@ const renderFeed = ({ feeds, posts }, { data }) => {
       link.target = '_blank';
       link.textContent = post.title;
       return link;
-    }).reverse();
+    });
     posts.append(...postItems);
   });
 };
@@ -35,6 +40,14 @@ const renderFeed = ({ feeds, posts }, { data }) => {
 const parseData = (state, feed) => {
   const parser = new DOMParser();
   const rssDocument = parser.parseFromString(feed, 'application/xml');
+  const error = rssDocument.querySelector('parsererror');
+
+  if (error) {
+    const err = rssDocument.firstChild.nodeValue;
+    handleError(state, err);
+    return;
+  }
+
   const title = rssDocument.querySelector('channel title').textContent;
   const description = rssDocument.querySelector('description').textContent;
   const posts = [...rssDocument.querySelectorAll('item')].map((item) => {
@@ -54,13 +67,15 @@ const parseData = (state, feed) => {
 };
 
 const loadFeed = (state) => {
-  const url = state.feeds[state.feeds.length - 1];
+  const url = state.link;
   axios.get(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`)
     .then((response) => {
+      state.feeds.push(state.link);
+      state.link = '';
       parseData(state, response.data);
     })
     .catch((err) => {
-      console.log(err);
+      handleError(state, err);
     });
 };
 
