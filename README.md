@@ -1,6 +1,3 @@
-### Hexlet tests and linter status:
-![Actions Status](/workflows/hexlet-check/badge.svg)
-
 [![Maintainability](https://api.codeclimate.com/v1/badges/bdea7569e925f603b0bc/maintainability)](https://codeclimate.com/github/mellyssy/frontend-project-lvl3/maintainability) 
 
 # RSS агрегатор 
