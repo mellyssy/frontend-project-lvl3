@@ -12,7 +12,7 @@ const handleErrorMsg = (err) => {
     debug: true,
     resources,
   });
-  console.log(err.message);
+
   switch (err.message) {
     case 'this must be a valid URL':
       return i18next.t('errors.invalidUrl');

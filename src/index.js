@@ -9,10 +9,12 @@ const handleSubmit = (e, state) => {
   state.phase = 'validating';
 };
 
+const isInFeeds = (data, title) => data.findIndex((feed) => feed.title === title);
+
 const renderFeed = ({ feeds, posts }, { data }) => {
   feeds.innerHTML = '';
   posts.innerHTML = '';
-  data.reverse().forEach((feed) => {
+  [...data].reverse().forEach((feed) => {
     const feedItem = `
     <li class="list-group-item">
       <h3>${feed.title}</h3>
@@ -53,6 +55,14 @@ const parseData = (state, feed) => {
       link: postLink,
     };
   });
+
+  const feedIndex = isInFeeds(state.data, title);
+  console.log(feedIndex);
+  if (feedIndex !== -1) {
+    state.data[feedIndex].posts = posts;
+    return;
+  }
+
   state.data.push({
     title,
     description,
@@ -61,17 +71,21 @@ const parseData = (state, feed) => {
   state.phase = 'rendering';
 };
 
-const loadFeed = (state) => {
-  const url = state.link;
+const loadFeed = (state, url) => {
   axios.get(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`)
     .then((response) => {
-      state.feeds.push(state.link);
-      state.link = '';
       parseData(state, response.data);
     })
     .catch((err) => {
       handleError(state, err);
     });
+};
+
+const reload = (state) => {
+  state.feeds.forEach((url) => {
+    loadFeed(state, url);
+  });
+  state.phase = 'rerender';
 };
 
 const render = (elements, state) => {
@@ -92,8 +106,15 @@ const render = (elements, state) => {
     case 'rendering':
       elements.form.reset();
       elements.submit.removeAttribute('disabled');
+      state.feeds.push(state.link);
+      state.link = '';
       renderFeed(elements, state);
       elements.feedsContainer.classList.remove('d-none');
+      state.phase = 'idle';
+      break;
+    case 'rerender':
+      renderFeed(elements, state);
+      state.phase = 'idle';
       break;
     default:
       state.errors.push('Unknown phase');
@@ -115,8 +136,7 @@ const runner = () => {
     feeds: [],
     data: [],
     errors: [],
-    phase: 'idle',
-    isValid: true,
+    phase: '',
     link: '',
   };
 
@@ -128,8 +148,14 @@ const runner = () => {
       render(elements, watchedState);
     } else if (value === 'loading') {
       render(elements, watchedState);
-      loadFeed(watchedState);
+      loadFeed(watchedState, state.link);
     } else if (value === 'rendering') {
+      render(elements, watchedState);
+    } else if (value === 'idle') {
+      setTimeout(() => {
+        reload(watchedState);
+      }, 5000);
+    } else if (value === 'rerender') {
       render(elements, watchedState);
     }
   });
