@@ -57,17 +57,12 @@ const parseData = (state, feed) => {
   });
 
   const feedIndex = isInFeeds(state.data, title);
-  console.log(feedIndex);
   if (feedIndex !== -1) {
     state.data[feedIndex].posts = posts;
     return;
   }
 
-  state.data.push({
-    title,
-    description,
-    posts,
-  });
+  state.data.push({ title, description, posts });
   state.phase = 'rendering';
 };
 
@@ -88,26 +83,34 @@ const reload = (state) => {
   state.phase = 'rerender';
 };
 
+const renderError = (elements, state) => {
+  elements.submit.removeAttribute('disabled');
+  elements.input.setCustomValidity(state.errors[0]);
+  elements.error.textContent = elements.input.validationMessage;
+  elements.form.classList.add('was-validated');
+  state.errors = [];
+};
+
+const cleanForm = (elements, state) => {
+  elements.form.reset();
+  elements.submit.removeAttribute('disabled');
+  state.feeds.push(state.link);
+  state.link = '';
+};
+
 const render = (elements, state) => {
   switch (state.phase) {
     case 'validating':
       elements.submit.setAttribute('disabled', true);
       break;
     case 'error':
-      elements.submit.removeAttribute('disabled');
-      elements.input.setCustomValidity(state.errors[0]);
-      elements.error.textContent = elements.input.validationMessage;
-      elements.form.classList.add('was-validated');
-      state.errors = [];
+      renderError(elements, state);
       break;
     case 'loading':
       elements.input.setCustomValidity('');
       break;
     case 'rendering':
-      elements.form.reset();
-      elements.submit.removeAttribute('disabled');
-      state.feeds.push(state.link);
-      state.link = '';
+      cleanForm(elements, state);
       renderFeed(elements, state);
       elements.feedsContainer.classList.remove('d-none');
       state.phase = 'idle';
@@ -121,7 +124,7 @@ const render = (elements, state) => {
   }
 };
 
-const runner = () => {
+const init = () => {
   const elements = {
     form: document.querySelector('.rss-input'),
     input: document.querySelector('.rss-link'),
@@ -140,23 +143,35 @@ const runner = () => {
     link: '',
   };
 
+  return [elements, state];
+};
+
+const runner = () => {
+  const [elements, state] = init();
   const watchedState = onChange(state, (path, value) => {
-    if (value === 'validating') {
-      validation(watchedState);
-      render(elements, watchedState);
-    } else if (value === 'error') {
-      render(elements, watchedState);
-    } else if (value === 'loading') {
-      render(elements, watchedState);
-      loadFeed(watchedState, state.link);
-    } else if (value === 'rendering') {
-      render(elements, watchedState);
-    } else if (value === 'idle') {
-      setTimeout(() => {
-        reload(watchedState);
-      }, 5000);
-    } else if (value === 'rerender') {
-      render(elements, watchedState);
+    if (path === 'phase') {
+      switch (value) {
+        case 'error':
+        case 'rendering':
+        case 'rerender':
+          render(elements, watchedState);
+          break;
+        case 'validating':
+          validation(watchedState);
+          render(elements, watchedState);
+          break;
+        case 'loading':
+          render(elements, watchedState);
+          loadFeed(watchedState, state.link);
+          break;
+        case 'idle':
+          setTimeout(() => {
+            reload(watchedState);
+          }, 5000);
+          break;
+        default:
+          throw new Error('unexpected phase');
+      }
     }
   });
 
