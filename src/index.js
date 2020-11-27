@@ -67,8 +67,7 @@ const parseData = (state, feed) => {
 };
 
 const loadFeed = (state, url) => {
-  axios.get(`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
-    { headers: { 'Access-Control-Allow-Origin': '*' } })
+  axios.get(`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`)
     .then((response) => {
       parseData(state, response.data);
     })
