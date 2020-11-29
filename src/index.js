@@ -121,7 +121,8 @@ const render = (elements, state) => {
       state.phase = 'idle';
       break;
     default:
-      state.errors.push('Unknown phase');
+      state.errors.push(`Unknown phase: ${state.phase}`);
+      state.phase = 'error';
   }
 };
 
@@ -171,7 +172,7 @@ const runner = () => {
           }, 5000);
           break;
         default:
-          throw new Error('unexpected phase');
+          throw new Error(`Unknown phase: ${value}`);
       }
     }
   });
