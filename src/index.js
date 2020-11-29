@@ -67,7 +67,8 @@ const parseData = (state, feed) => {
 };
 
 const loadFeed = (state, url) => {
-  axios.get(`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`)
+  const proxy = 'https://rss-reader-proxy.herokuapp.com/';
+  axios.get(`${proxy}${url}`)
     .then((response) => {
       parseData(state, response.data);
     })
