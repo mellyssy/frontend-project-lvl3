@@ -2,10 +2,6 @@ import * as yup from 'yup';
 import i18next from 'i18next';
 import resources from './locales.js';
 
-const schema = yup.string().required().url().matches(/rss/);
-
-const isCopy = ({ feeds }, link) => feeds.includes(link);
-
 const handleErrorMsg = (err) => {
   i18next.init({
     lng: 'en',
@@ -36,12 +32,12 @@ const handleError = (state, error) => {
 };
 
 const validation = (state) => {
+  const schema = yup.string().required().url().matches(/rss/)
+    .notOneOf(state.links, 'feed is in the list');
+
   schema
-    .validate(state.link)
-    .then((value) => {
-      if (isCopy(state, value)) {
-        throw new Error('feed is in the list');
-      }
+    .validate(state.url)
+    .then(() => {
       state.phase = 'loading';
     })
     .catch((err) => {

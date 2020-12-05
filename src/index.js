@@ -2,68 +2,36 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
 import axios from 'axios';
 import { validation, handleError } from './validation.js';
+import parseData from './parser.js';
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
-  state.link = formData.get('link');
+  state.url = formData.get('link');
   state.phase = 'validating';
 };
 
-const isInFeeds = (data, title) => data.findIndex((feed) => feed.title === title);
-
-const renderFeed = ({ feeds, posts }, { data }) => {
-  feeds.innerHTML = '';
-  posts.innerHTML = '';
-  [...data].reverse().forEach((feed) => {
+const renderFeed = (elements, state) => {
+  elements.feeds.innerHTML = '';
+  elements.posts.innerHTML = '';
+  [...state.feeds].reverse().forEach((feed) => {
     const feedItem = `
     <li class="list-group-item">
       <h3>${feed.title}</h3>
       <p>${feed.description}</p>
     </li>`;
-    feeds.innerHTML += feedItem;
-
-    const postItems = feed.posts.map((post) => {
-      const link = document.createElement('a');
-      link.classList.add('list-group-item', 'list-group-item-action');
-      link.href = post.link;
-      link.target = '_blank';
-      link.textContent = post.title;
-      return link;
-    });
-    posts.append(...postItems);
-  });
-};
-
-const parseData = (state, feed) => {
-  const parser = new DOMParser();
-  const rssDocument = parser.parseFromString(feed, 'application/xml');
-  const error = rssDocument.querySelector('parsererror');
-
-  if (error) {
-    const err = rssDocument.firstChild.nodeValue;
-    handleError(state, err);
-    return;
-  }
-
-  const title = rssDocument.querySelector('channel title').textContent;
-  const description = rssDocument.querySelector('description').textContent;
-  const posts = [...rssDocument.querySelectorAll('item')].map((item) => {
-    const postTitle = item.querySelector('title').textContent;
-    const postLink = item.querySelector('link').textContent;
-    return {
-      title: postTitle,
-      link: postLink,
-    };
+    elements.feeds.innerHTML += feedItem;
   });
 
-  const feedIndex = isInFeeds(state.data, title);
-  if (feedIndex !== -1) {
-    state.data[feedIndex].posts = posts;
-    return;
-  }
-
-  state.data.push({ title, description, posts });
-  state.phase = 'rendering';
+  const postItems = [...state.posts].map((post) => {
+    const link = document.createElement('a');
+    link.classList.add('list-group-item', 'list-group-item-action');
+    link.href = post.link;
+    link.target = '_blank';
+    link.textContent = post.title;
+    return link;
+  });
+  elements.posts.append(...postItems);
+  state.phase = 'idle';
 };
 
 const loadFeed = (state, url) => {
@@ -78,7 +46,7 @@ const loadFeed = (state, url) => {
 };
 
 const reload = (state) => {
-  state.feeds.forEach((url) => {
+  state.links.forEach((url) => {
     loadFeed(state, url);
   });
   state.phase = 'rerender';
@@ -95,8 +63,8 @@ const renderError = (elements, state) => {
 const cleanForm = (elements, state) => {
   elements.form.reset();
   elements.submit.removeAttribute('disabled');
-  state.feeds.push(state.link);
-  state.link = '';
+  state.links.push(state.url);
+  state.url = '';
 };
 
 const render = (elements, state) => {
@@ -112,13 +80,11 @@ const render = (elements, state) => {
       break;
     case 'rendering':
       cleanForm(elements, state);
-      renderFeed(elements, state);
       elements.feedsContainer.classList.remove('d-none');
-      state.phase = 'idle';
+      renderFeed(elements, state);
       break;
     case 'rerender':
       renderFeed(elements, state);
-      state.phase = 'idle';
       break;
     default:
       state.errors.push(`Unknown phase: ${state.phase}`);
@@ -138,11 +104,12 @@ const init = () => {
   };
 
   const state = {
+    links: [],
     feeds: [],
-    data: [],
+    posts: [],
     errors: [],
     phase: '',
-    link: '',
+    url: '',
   };
 
   return [elements, state];
@@ -164,7 +131,7 @@ const runner = () => {
           break;
         case 'loading':
           render(elements, watchedState);
-          loadFeed(watchedState, state.link);
+          loadFeed(watchedState, watchedState.url);
           break;
         case 'idle':
           setTimeout(() => {
