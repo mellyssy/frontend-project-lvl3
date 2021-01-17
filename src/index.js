@@ -1,13 +1,26 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
 import axios from 'axios';
-import { validation, handleError } from './validation.js';
+import i18next from 'i18next';
+import validation from './validation.js';
 import parseData from './parser.js';
+import resources from './locales.js';
+
+// const isIn = (data, key, value) => (data.findIndex((el) => el[key] === value) === -1);
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.url = formData.get('link');
-  state.phase = 'validating';
+  state.formState = 'validating';
+};
+
+const renderError = (elements, state) => {
+  elements.submit.removeAttribute('disabled');
+  const msg = i18next.t(state.errors[0]);
+  elements.input.setCustomValidity(msg);
+  elements.error.textContent = elements.input.validationMessage;
+  elements.form.classList.add('was-validated');
+  state.errors = [];
 };
 
 const renderFeed = (elements, state) => {
@@ -31,33 +44,29 @@ const renderFeed = (elements, state) => {
     return link;
   });
   elements.posts.append(...postItems);
-  state.phase = 'idle';
 };
 
 const loadFeed = (state, url) => {
   const proxy = 'https://rss-reader-proxy.herokuapp.com/';
-  axios.get(`${proxy}${url}`)
-    .then((response) => {
-      parseData(state, response.data);
-    })
-    .catch((err) => {
-      handleError(state, err);
-    });
+  return axios.get(`${proxy}${url}`); // возвращаем промис
+  // .then((response) => {
+  //   const parsed = parseData(state, response.data);
+  // })
+  // .catch((err) => {
+  //   state.errors.push(err);
+  //   state.appState = 'error';
+  // });
 };
 
 const reload = (state) => {
-  state.links.forEach((url) => {
-    loadFeed(state, url);
-  });
-  state.phase = 'rerender';
-};
-
-const renderError = (elements, state) => {
-  elements.submit.removeAttribute('disabled');
-  elements.input.setCustomValidity(state.errors[0]);
-  elements.error.textContent = elements.input.validationMessage;
-  elements.form.classList.add('was-validated');
-  state.errors = [];
+  const promises = state.links.map((url) => loadFeed(state, url));
+  Promise.all(promises).then((response) => {
+    const parsed = parseData(state, response.data);
+  })
+    .catch((err) => {
+      state.errors.push(err);
+      state.appState = 'error';
+    });
 };
 
 const cleanForm = (elements, state) => {
@@ -67,32 +76,13 @@ const cleanForm = (elements, state) => {
   state.url = '';
 };
 
-const render = (elements, state) => {
-  switch (state.phase) {
-    case 'validating':
-      elements.submit.setAttribute('disabled', true);
-      break;
-    case 'error':
-      renderError(elements, state);
-      break;
-    case 'loading':
-      elements.input.setCustomValidity('');
-      break;
-    case 'rendering':
-      cleanForm(elements, state);
-      elements.feedsContainer.classList.remove('d-none');
-      renderFeed(elements, state);
-      break;
-    case 'rerender':
-      renderFeed(elements, state);
-      break;
-    default:
-      state.errors.push(`Unknown phase: ${state.phase}`);
-      state.phase = 'error';
-  }
-};
-
 const init = () => {
+  i18next.init({
+    lng: 'en',
+    debug: true,
+    resources,
+  });
+
   const elements = {
     form: document.querySelector('.rss-input'),
     input: document.querySelector('.rss-link'),
@@ -110,6 +100,12 @@ const init = () => {
     errors: [],
     phase: '',
     url: '',
+    appState: '',
+    formState: '',
+    postsState: '',
+    // appState 'loading', 'ready', 'error'
+    // formState 'valid', 'invalid'
+    // postsState ?
   };
 
   return [elements, state];
@@ -118,28 +114,32 @@ const init = () => {
 const runner = () => {
   const [elements, state] = init();
   const watchedState = onChange(state, (path, value) => {
-    if (path === 'phase') {
-      switch (value) {
-        case 'error':
-        case 'rendering':
-        case 'rerender':
-          render(elements, watchedState);
-          break;
-        case 'validating':
-          validation(watchedState);
-          render(elements, watchedState);
-          break;
-        case 'loading':
-          render(elements, watchedState);
-          loadFeed(watchedState, watchedState.url);
-          break;
-        case 'idle':
-          setTimeout(() => {
-            reload(watchedState);
-          }, 5000);
-          break;
-        default:
-          throw new Error(`Unknown phase: ${value}`);
+    if (path === 'appState') {
+      if (value === 'loading') {
+        loadFeed(watchedState, elements, watchedState.url);
+      } else if (value === 'error') {
+        renderError(elements, state);
+      } else if (value === 'ready') {
+        renderFeed(elements, state);
+        reload(watchedState);
+      }
+    } else if (path === 'formState') {
+      if (value === 'invalid') {
+        watchedState.appState = 'error';
+      } else if (value === 'valid') {
+        elements.input.setCustomValidity('');
+        cleanForm(elements, state);
+        elements.feedsContainer.classList.remove('d-none');
+        watchedState.appState = 'loading';
+      } else if (value === 'validating') {
+        elements.submit.setAttribute('disabled', true);
+        const error = validation(watchedState);
+        if (error) {
+          watchedState.errors.push(error);
+          watchedState.formState = 'invalid';
+        } else {
+          watchedState.formState = 'valid';
+        }
       }
     }
   });
@@ -151,3 +151,31 @@ const runner = () => {
 };
 
 runner();
+
+// if (path === 'phase') {
+//   switch (value) {
+//     case 'error':
+//     case 'rendering':
+//     case 'rerender':
+//       render(elements, watchedState);
+//       break;
+//     case 'validating':
+//       const error = validation(watchedState);
+//       if (error) {
+//         handleError(watchedState, error);
+//       } else {
+//         watchedState.phase = 'loading';
+//       }
+//       break;
+//     case 'loading':
+//       render(elements, watchedState);
+//       loadFeed(watchedState, watchedState.url);
+//       break;
+//     case 'idle':
+//       setTimeout(() => {
+//         reload(watchedState);
+//       }, 5000);
+//       break;
+//     default:
+//       throw new Error(`Unknown phase: ${value}`);
+//   }

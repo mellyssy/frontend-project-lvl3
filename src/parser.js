@@ -1,5 +1,3 @@
-const isIn = (data, key, value) => (data.findIndex((el) => el[key] === value) === -1);
-
 const parseData = (state, feed) => {
   const parser = new DOMParser();
   const rssDocument = parser.parseFromString(feed, 'application/xml');
@@ -19,15 +17,13 @@ const parseData = (state, feed) => {
       title: postTitle,
       link: postLink,
     };
-  })
-    .filter(({ link }) => isIn(state.posts, 'link', link));
-  state.posts = [...posts, ...state.posts];
+  });
 
-  const isNewFeed = isIn(state.feeds, 'title', title);
-  if (isNewFeed) {
-    state.feeds.push({ title, description });
-    state.phase = 'rendering';
-  }
+  return {
+    posts,
+    title,
+    description,
+  };
 };
 
 export default parseData;
