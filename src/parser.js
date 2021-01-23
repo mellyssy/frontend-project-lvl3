@@ -1,6 +1,6 @@
-const parseData = (state, feed) => {
+const parseData = (data) => {
   const parser = new DOMParser();
-  const rssDocument = parser.parseFromString(feed, 'application/xml');
+  const rssDocument = parser.parseFromString(data, 'application/xml');
   const error = rssDocument.querySelector('parsererror');
 
   if (error) {
@@ -8,20 +8,17 @@ const parseData = (state, feed) => {
     throw new Error(err);
   }
 
-  const title = rssDocument.querySelector('channel title').textContent;
+  const channelTitle = rssDocument.querySelector('channel title').textContent;
   const description = rssDocument.querySelector('description').textContent;
-  const posts = [...rssDocument.querySelectorAll('item')].map((item) => {
-    const postTitle = item.querySelector('title').textContent;
-    const postLink = item.querySelector('link').textContent;
-    return {
-      title: postTitle,
-      link: postLink,
-    };
+  const items = [...rssDocument.querySelectorAll('item')].map((item) => {
+    const title = item.querySelector('title').textContent;
+    const link = item.querySelector('link').textContent;
+    return { title, link };
   });
 
   return {
-    posts,
-    title,
+    items,
+    channelTitle,
     description,
   };
 };

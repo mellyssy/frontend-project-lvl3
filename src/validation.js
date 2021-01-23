@@ -1,8 +1,9 @@
 import * as yup from 'yup';
 
 const validation = (state) => {
+  const urls = state.feeds.map((o) => o.url);
   const schema = yup.string().required().url().matches(/rss/)
-    .notOneOf(state.links, 'feed is in the list');
+    .notOneOf(urls, 'feed is in the list');
 
   schema
     .validate(state.url)
