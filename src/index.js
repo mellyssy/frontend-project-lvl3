@@ -46,7 +46,7 @@ const loadFeed = (state) => {
       const { items, channelTitle: title, description } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
       state.appState = 'ready';
-      state.posts.push(...items);
+      state.posts = [...items, ...state.posts];
     }).catch((err) => {
       state.error = err;
       state.appState = 'error';
@@ -59,7 +59,7 @@ const reload = (state) => {
     const { items } = parseData(response.data);
 
     const newItems = _.difference(items, state.posts);
-    state.posts.push(...newItems);
+    state.posts = [...newItems, ...state.posts];
 
     setTimeout(() => {
       reload(state);
@@ -80,6 +80,7 @@ const cleanForm = (elements, state) => {
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.url = formData.get('link');
+  state.appState = 'loading'; // bad idea
   state.formState = 'validating';
   const err = validation(state);
   if (err) {
