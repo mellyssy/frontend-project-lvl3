@@ -5,10 +5,7 @@ const validation = (state) => {
   const schema = yup.string().required().url().matches(/rss/)
     .notOneOf(urls, 'feed is in the list');
 
-  schema
-    .validate(state.url)
-    .then()
-    .catch((err) => err);
+  return schema.validate(state.url);
 };
 
 export default validation;

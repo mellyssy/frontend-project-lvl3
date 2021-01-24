@@ -54,21 +54,22 @@ const loadFeed = (state) => {
 };
 
 const reload = (state) => {
-  const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-  Promise.all(promises).then((response) => {
-    const { items } = parseData(response.data);
+  if (state.feeds.length) {
+    const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
+    Promise.all(promises).then((response) => {
+      const { items } = parseData(response.data);
 
-    const newItems = _.difference(items, state.posts);
-    state.posts = [...newItems, ...state.posts];
-
-    setTimeout(() => {
-      reload(state);
-    }, 5000);
-  })
-    .catch((err) => {
-      state.error = err;
-      state.appState = 'error';
-    });
+      const newItems = _.difference(items, state.posts);
+      state.posts = [...newItems, ...state.posts];
+    })
+      .catch((err) => {
+        state.error = err;
+        state.appState = 'error';
+      });
+  }
+  setTimeout(() => {
+    reload(state);
+  }, 5000);
 };
 
 const cleanForm = (elements, state) => {
@@ -82,14 +83,14 @@ const handleSubmit = (e, state) => {
   state.url = formData.get('link');
   state.appState = 'loading'; // bad idea
   state.formState = 'validating';
-  const err = validation(state);
-  if (err) {
-    state.error = err;
-    state.formState = 'invalid';
-  } else {
-    state.formState = 'valid';
-    loadFeed(state);
-  }
+  Promise.resolve(validation(state))
+    .then(() => {
+      state.formState = 'valid';
+      loadFeed(state);
+    }).catch((error) => {
+      state.error = error.message;
+      state.formState = 'invalid';
+    });
 };
 
 const runner = () => {
