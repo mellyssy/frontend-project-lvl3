@@ -56,14 +56,16 @@ const loadFeed = (state) => {
 const reload = (state) => {
   if (state.feeds.length) {
     const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-    Promise.all(promises).then((response) => {
-      const { items } = parseData(response.data);
-
-      const newItems = _.difference(items, state.posts);
+    Promise.all(promises).then((values) => {
+      const newItems = values.flatMap((response) => {
+        const { items } = parseData(response.data);
+        // state.posts — Proxy? doesn't work in difference?
+        return _.difference(items, state.posts);
+      });
       state.posts = [...newItems, ...state.posts];
     })
       .catch((err) => {
-        state.error = err;
+        state.error = err.message;
         state.appState = 'error';
       });
   }
@@ -117,6 +119,7 @@ const runner = () => {
 
   i18next.init({
     lng: 'en',
+    nsSeparator: false,
     debug: true,
     resources,
   }).then(() => {

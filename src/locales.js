@@ -7,6 +7,7 @@ export default {
         'this is a required field': 'Don\'t forget to put in URL',
         'feed is in the list': 'You can\'t add feed twice',
         'Network Error': 'Network error, check your connection',
+        null: 'Reload failed, but why?',
       },
     },
   },
