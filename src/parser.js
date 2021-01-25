@@ -9,17 +9,18 @@ const parseData = (data) => {
   }
 
   const channelTitle = rssDocument.querySelector('channel title').textContent;
-  const description = rssDocument.querySelector('description').textContent;
+  const channelDescription = rssDocument.querySelector('description').textContent;
   const items = [...rssDocument.querySelectorAll('item')].map((item) => {
     const title = item.querySelector('title').textContent;
     const link = item.querySelector('link').textContent;
-    return { title, link };
+    const description = item.querySelector('description').textContent;
+    return { title, link, description };
   });
 
   return {
     items,
     channelTitle,
-    description,
+    channelDescription,
   };
 };
 

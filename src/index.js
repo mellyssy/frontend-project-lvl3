@@ -1,8 +1,10 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/js/dist/util.js';
+import 'bootstrap/js/dist/modal.js';
 import onChange from 'on-change';
 import axios from 'axios';
 import i18next from 'i18next';
-import _ from 'lodash';
+// _ from 'lodash';
 import validation from './validation.js';
 import parseData from './parser.js';
 import resources from './locales.js';
@@ -14,6 +16,50 @@ const renderError = (elements, message) => {
   elements.input.setCustomValidity(i18next.t(`errors.${message}`));
   elements.error.textContent = elements.input.validationMessage;
   elements.form.classList.add('was-validated');
+};
+
+const markAsRead = (link) => {
+  link.classList.remove('font-weight-bold');
+  link.classList.add('font-weight-normal');
+};
+
+const fillModal = (modal, data) => {
+  const title = modal.querySelector('.modal-title');
+  const body = modal.querySelector('.modal-body p');
+  const link = modal.querySelector('.full-article-link');
+  link.href = data.link;
+  title.textContent = data.title;
+  body.textContent = data.description;
+};
+
+const createPostElement = ({ modal }, data, index) => {
+  const link = document.createElement('a');
+  link.href = data.link;
+  link.target = '_blank';
+  link.textContent = data.title;
+  link.classList.add('font-weight-bold');
+
+  link.addEventListener('click', () => {
+    markAsRead(link);
+  });
+
+  const modalBtn = document.createElement('button');
+  modalBtn.classList.add('btn', 'btn-info');
+  modalBtn.dataset.toggle = 'modal';
+  modalBtn.dataset.target = '#postModal';
+  modalBtn.dataset.index = index;
+  modalBtn.textContent = 'Preview';
+
+  modalBtn.addEventListener('click', () => {
+    fillModal(modal, data);
+    markAsRead(link);
+  });
+
+  const item = document.createElement('li');
+  item.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+  item.appendChild(link);
+  item.appendChild(modalBtn);
+  return item;
 };
 
 const renderFeed = (elements, state) => {
@@ -28,14 +74,9 @@ const renderFeed = (elements, state) => {
     elements.feeds.innerHTML += feedItem;
   });
 
-  const postItems = [...state.posts].map((post) => {
-    const link = document.createElement('a');
-    link.classList.add('list-group-item', 'list-group-item-action');
-    link.href = post.link;
-    link.target = '_blank';
-    link.textContent = post.title;
-    return link;
-  });
+  const postItems = [...state.posts].map(
+    (post, index) => createPostElement(elements, post, index),
+  );
   elements.posts.append(...postItems);
 };
 
@@ -43,7 +84,11 @@ const loadFeed = (state) => {
   axios
     .get(`${proxy}${state.url}`)
     .then((response) => {
-      const { items, channelTitle: title, description } = parseData(response.data);
+      const {
+        items,
+        channelTitle: title,
+        channelDescription: description,
+      } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
       state.appState = 'ready';
       state.posts = [...items, ...state.posts];
@@ -53,26 +98,25 @@ const loadFeed = (state) => {
     });
 };
 
-const reload = (state) => {
-  if (state.feeds.length) {
-    const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-    Promise.all(promises).then((values) => {
-      const newItems = values.flatMap((response) => {
-        const { items } = parseData(response.data);
-        // state.posts — Proxy? doesn't work in difference?
-        return _.difference(items, state.posts);
-      });
-      state.posts = [...newItems, ...state.posts];
-    })
-      .catch((err) => {
-        state.error = err.message;
-        state.appState = 'error';
-      });
-  }
-  setTimeout(() => {
-    reload(state);
-  }, 5000);
-};
+// const reload = (state) => {
+//   if (state.feeds.length) {
+//     const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
+//     Promise.all(promises).then((values) => {
+//       const newItems = values.flatMap((response) => {
+//         const { items } = parseData(response.data);
+//         return _.differenceWith(items, state.posts, _.isEqual);
+//       });
+//       state.posts = [...newItems, ...state.posts];
+//     })
+//       .catch((err) => {
+//         state.error = err.message;
+//         state.appState = 'error';
+//       });
+//   }
+//   setTimeout(() => {
+//     reload(state);
+//   }, 5000);
+// };
 
 const cleanForm = (elements, state) => {
   elements.form.reset();
@@ -104,6 +148,7 @@ const runner = () => {
     feedsContainer: document.querySelector('.feeds-container'),
     feeds: document.querySelector('.feeds'),
     posts: document.querySelector('.posts'),
+    modal: document.querySelector('#postModal'),
   };
 
   const state = {
@@ -147,8 +192,7 @@ const runner = () => {
       e.preventDefault();
       handleSubmit(e, watchedState);
     });
-
-    reload(watchedState);
+    // reload(watchedState);
   });
 };
 
