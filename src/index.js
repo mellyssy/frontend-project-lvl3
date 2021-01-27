@@ -4,7 +4,7 @@ import 'bootstrap/js/dist/modal.js';
 import onChange from 'on-change';
 import axios from 'axios';
 import i18next from 'i18next';
-// _ from 'lodash';
+import _ from 'lodash';
 import validation from './validation.js';
 import parseData from './parser.js';
 import resources from './locales.js';
@@ -32,14 +32,17 @@ const fillModal = (modal, data) => {
   body.textContent = data.description;
 };
 
-const createPostElement = ({ modal }, data, index) => {
+const createPostElement = ({ modal }, item, index) => {
   const link = document.createElement('a');
-  link.href = data.link;
+  link.href = item.link;
   link.target = '_blank';
-  link.textContent = data.title;
-  link.classList.add('font-weight-bold');
+  link.textContent = item.title;
+  if (!item.isClicked) {
+    link.classList.add('font-weight-bold');
+  }
 
   link.addEventListener('click', () => {
+    item.isClicked = true;
     markAsRead(link);
   });
 
@@ -51,15 +54,16 @@ const createPostElement = ({ modal }, data, index) => {
   modalBtn.textContent = 'Preview';
 
   modalBtn.addEventListener('click', () => {
-    fillModal(modal, data);
+    fillModal(modal, item);
+    item.isClicked = true;
     markAsRead(link);
   });
 
-  const item = document.createElement('li');
-  item.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-  item.appendChild(link);
-  item.appendChild(modalBtn);
-  return item;
+  const listItem = document.createElement('li');
+  listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+  listItem.appendChild(link);
+  listItem.appendChild(modalBtn);
+  return listItem;
 };
 
 const renderFeed = (elements, state) => {
@@ -98,25 +102,29 @@ const loadFeed = (state) => {
     });
 };
 
-// const reload = (state) => {
-//   if (state.feeds.length) {
-//     const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-//     Promise.all(promises).then((values) => {
-//       const newItems = values.flatMap((response) => {
-//         const { items } = parseData(response.data);
-//         return _.differenceWith(items, state.posts, _.isEqual);
-//       });
-//       state.posts = [...newItems, ...state.posts];
-//     })
-//       .catch((err) => {
-//         state.error = err.message;
-//         state.appState = 'error';
-//       });
-//   }
-//   setTimeout(() => {
-//     reload(state);
-//   }, 5000);
-// };
+const reload = (state) => {
+  if (state.feeds.length) {
+    const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
+    Promise.all(promises).then((values) => {
+      const newItems = values.flatMap((response) => {
+        const { items } = parseData(response.data);
+        return _.differenceWith(
+          items,
+          state.posts,
+          (arrVal, othVal) => arrVal.title === othVal.title,
+        );
+      });
+      state.posts = [...newItems, ...state.posts];
+    })
+      .catch((err) => {
+        state.error = err.message;
+        state.appState = 'error';
+      });
+  }
+  setTimeout(() => {
+    reload(state);
+  }, 5000);
+};
 
 const cleanForm = (elements, state) => {
   elements.form.reset();
@@ -192,7 +200,7 @@ const runner = () => {
       e.preventDefault();
       handleSubmit(e, watchedState);
     });
-    // reload(watchedState);
+    reload(watchedState);
   });
 };
 
