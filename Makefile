@@ -4,4 +4,7 @@ install:
 lint:
 	npx eslint .
 
+build:
+	npm run build
+
 .PHONY: test

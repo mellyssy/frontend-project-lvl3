@@ -11,14 +11,16 @@ import resources from './locales.js';
 
 const proxy = 'https://rss-reader-proxy.herokuapp.com/';
 
-const renderError = (elements, message) => {
+const renderError = (elements, key) => {
   elements.submit.removeAttribute('disabled');
-  elements.input.setCustomValidity(i18next.t(`errors.${message}`));
-  elements.error.textContent = elements.input.validationMessage;
+  const message = i18next.t(`errors.${key}`);
+  elements.input.setCustomValidity(message);
+  elements.error.textContent = message;
   elements.form.classList.add('was-validated');
 };
 
-const markAsRead = (link) => {
+const markAsRead = (id) => {
+  const link = document.querySelector(`a[data-index="${id}"]`);
   link.classList.remove('font-weight-bold');
   link.classList.add('font-weight-normal');
 };
@@ -32,31 +34,30 @@ const fillModal = (modal, data) => {
   body.textContent = data.description;
 };
 
-const createPostElement = ({ modal }, item, index) => {
+const createPostElement = ({ modal }, item, uiLinks) => {
   const link = document.createElement('a');
   link.href = item.link;
   link.target = '_blank';
   link.textContent = item.title;
-  if (!item.isClicked) {
+  link.dataset.index = item.id;
+  if (!uiLinks[item.id].isClicked) {
     link.classList.add('font-weight-bold');
   }
 
   link.addEventListener('click', () => {
-    item.isClicked = true;
-    markAsRead(link);
+    uiLinks[item.id].isClicked = true;
   });
 
   const modalBtn = document.createElement('button');
   modalBtn.classList.add('btn', 'btn-info');
   modalBtn.dataset.toggle = 'modal';
   modalBtn.dataset.target = '#postModal';
-  modalBtn.dataset.index = index;
+  modalBtn.dataset.index = item.id;
   modalBtn.textContent = 'Preview';
 
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
-    item.isClicked = true;
-    markAsRead(link);
+    uiLinks[item.id].isClicked = true;
   });
 
   const listItem = document.createElement('li');
@@ -79,7 +80,7 @@ const renderFeed = (elements, state) => {
   });
 
   const postItems = [...state.posts].map(
-    (post, index) => createPostElement(elements, post, index),
+    (post) => createPostElement(elements, post, state.uiLinks),
   );
   elements.posts.append(...postItems);
 };
@@ -95,6 +96,8 @@ const loadFeed = (state) => {
       } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
       state.appState = 'ready';
+      const uiItems = items.reduce((acc, { id }) => ({ ...acc, [id]: { isClicked: false } }), {});
+      state.uiLinks = { ...uiItems, ...state.uiLinks };
       state.posts = [...items, ...state.posts];
     }).catch((err) => {
       state.error = err;
@@ -103,24 +106,25 @@ const loadFeed = (state) => {
 };
 
 const reload = (state) => {
-  if (state.feeds.length) {
-    const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-    Promise.all(promises).then((values) => {
-      const newItems = values.flatMap((response) => {
-        const { items } = parseData(response.data);
-        return _.differenceWith(
-          items,
-          state.posts,
-          (arrVal, othVal) => arrVal.title === othVal.title,
-        );
-      });
-      state.posts = [...newItems, ...state.posts];
-    })
-      .catch((err) => {
-        state.error = err.message;
-        state.appState = 'error';
-      });
-  }
+  const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
+  Promise.all(promises).then((values) => {
+    const newItems = values.flatMap((response) => {
+      const { items } = parseData(response.data);
+      return _.differenceWith(
+        items,
+        state.posts,
+        (arrVal, othVal) => arrVal.title === othVal.title,
+      );
+    });
+    const uiItems = newItems.reduce((acc, { id }) => ({ ...acc, [id]: { isClicked: false } }), {});
+    state.uiLinks = { ...uiItems, ...state.uiLinks };
+    state.posts = [...newItems, ...state.posts];
+  })
+    .catch((err) => {
+      state.error = err.message;
+      state.appState = 'error';
+    });
+
   setTimeout(() => {
     reload(state);
   }, 5000);
@@ -135,9 +139,9 @@ const cleanForm = (elements, state) => {
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.url = formData.get('link');
-  state.appState = 'loading'; // bad idea
+  state.appState = 'loading';
   state.formState = 'validating';
-  Promise.resolve(validation(state))
+  validation(state)
     .then(() => {
       state.formState = 'valid';
       loadFeed(state);
@@ -162,12 +166,11 @@ const runner = () => {
   const state = {
     feeds: [],
     posts: [],
+    uiLinks: {},
     error: '',
-    phase: '',
     url: '',
     appState: '',
     formState: '',
-    postsState: '',
   };
 
   i18next.init({
@@ -193,6 +196,9 @@ const runner = () => {
         }
       } else if (path === 'posts') {
         renderFeed(elements, state);
+      } else if (path.includes('isClicked')) {
+        const splitPath = path.split('.');
+        markAsRead(splitPath[1]);
       }
     });
 

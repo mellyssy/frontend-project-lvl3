@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 const parseData = (data) => {
   const parser = new DOMParser();
   const rssDocument = parser.parseFromString(data, 'application/xml');
@@ -14,8 +16,9 @@ const parseData = (data) => {
     const title = item.querySelector('title').textContent;
     const link = item.querySelector('link').textContent;
     const description = item.querySelector('description').textContent;
+    const id = _.uniqueId();
     return {
-      title, link, description, isClicked: false,
+      title, link, description, id,
     };
   });
 
