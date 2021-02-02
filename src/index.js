@@ -34,18 +34,18 @@ const fillModal = (modal, data) => {
   body.textContent = data.description;
 };
 
-const createPostElement = ({ modal }, item, uiLinks) => {
+const createPostElement = ({ modal }, item, clickedLinks) => {
   const link = document.createElement('a');
   link.href = item.link;
   link.target = '_blank';
   link.textContent = item.title;
   link.dataset.index = item.id;
-  if (!uiLinks[item.id].isClicked) {
+  if (!clickedLinks.includes(item.id)) {
     link.classList.add('font-weight-bold');
   }
 
   link.addEventListener('click', () => {
-    uiLinks[item.id].isClicked = true;
+    clickedLinks.push(item.id);
   });
 
   const modalBtn = document.createElement('button');
@@ -57,7 +57,7 @@ const createPostElement = ({ modal }, item, uiLinks) => {
 
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
-    uiLinks[item.id].isClicked = true;
+    clickedLinks.push(item.id);
   });
 
   const listItem = document.createElement('li');
@@ -71,16 +71,18 @@ const renderFeed = (elements, state) => {
   elements.feeds.innerHTML = '';
   elements.posts.innerHTML = '';
   [...state.feeds].reverse().forEach((feed) => {
-    const feedItem = `
-    <li class="list-group-item">
-      <h3>${feed.title}</h3>
-      <p>${feed.description}</p>
-    </li>`;
-    elements.feeds.innerHTML += feedItem;
+    const feedItem = document.createElement('li');
+    feedItem.classList.add('list-group-item');
+    const feedTitle = document.createElement('h3');
+    feedTitle.textContent = feed.title;
+    const feedDescription = document.createElement('p');
+    feedDescription.textContent = feed.description;
+    feedItem.append(feedTitle, feedDescription);
+    elements.feeds.appendChild(feedItem);
   });
 
   const postItems = [...state.posts].map(
-    (post) => createPostElement(elements, post, state.uiLinks),
+    (post) => createPostElement(elements, post, state.clickedLinks),
   );
   elements.posts.append(...postItems);
 };
@@ -91,14 +93,14 @@ const loadFeed = (state) => {
     .then((response) => {
       const {
         items,
-        channelTitle: title,
-        channelDescription: description,
+        title,
+        description,
       } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
+      state.url = '';
       state.appState = 'ready';
-      const uiItems = items.reduce((acc, { id }) => ({ ...acc, [id]: { isClicked: false } }), {});
-      state.uiLinks = { ...uiItems, ...state.uiLinks };
-      state.posts = [...items, ...state.posts];
+      const itemsWithId = items.map((item) => ({ ...item, id: _.uniqueId() }));
+      state.posts = [...itemsWithId, ...state.posts];
     }).catch((err) => {
       state.error = err;
       state.appState = 'error';
@@ -114,26 +116,15 @@ const reload = (state) => {
         items,
         state.posts,
         (arrVal, othVal) => arrVal.title === othVal.title,
-      );
+      ).map((item) => ({ ...item, id: _.uniqueId() }));
     });
-    const uiItems = newItems.reduce((acc, { id }) => ({ ...acc, [id]: { isClicked: false } }), {});
-    state.uiLinks = { ...uiItems, ...state.uiLinks };
     state.posts = [...newItems, ...state.posts];
   })
-    .catch((err) => {
-      state.error = err.message;
-      state.appState = 'error';
-    });
+    .catch();
 
   setTimeout(() => {
     reload(state);
   }, 5000);
-};
-
-const cleanForm = (elements, state) => {
-  elements.form.reset();
-  elements.submit.removeAttribute('disabled');
-  state.url = '';
 };
 
 const handleSubmit = (e, state) => {
@@ -141,14 +132,15 @@ const handleSubmit = (e, state) => {
   state.url = formData.get('link');
   state.appState = 'loading';
   state.formState = 'validating';
-  validation(state)
-    .then(() => {
-      state.formState = 'valid';
-      loadFeed(state);
-    }).catch((error) => {
-      state.error = error.message;
-      state.formState = 'invalid';
-    });
+  const urls = state.feeds.map((o) => o.url);
+  try {
+    validation(urls, state.url);
+    state.formState = 'valid';
+    loadFeed(state);
+  } catch (error) {
+    state.error = error.message;
+    state.formState = 'invalid';
+  }
 };
 
 const runner = () => {
@@ -166,7 +158,7 @@ const runner = () => {
   const state = {
     feeds: [],
     posts: [],
-    uiLinks: {},
+    clickedLinks: [],
     error: '',
     url: '',
     appState: '',
@@ -185,7 +177,8 @@ const runner = () => {
           renderError(elements, state.error);
         } else if (value === 'ready') {
           elements.input.setCustomValidity('');
-          cleanForm(elements, state);
+          elements.form.reset();
+          elements.submit.removeAttribute('disabled');
           elements.feedsContainer.classList.remove('d-none');
         }
       } else if (path === 'formState') {
@@ -196,9 +189,10 @@ const runner = () => {
         }
       } else if (path === 'posts') {
         renderFeed(elements, state);
-      } else if (path.includes('isClicked')) {
-        const splitPath = path.split('.');
-        markAsRead(splitPath[1]);
+      } else if (path === 'clickedLinks') {
+        // doesn't trigger :(
+        const id = state.clickedLinks[state.clickedLinks.length - 1];
+        markAsRead(id);
       }
     });
 
