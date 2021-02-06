@@ -34,30 +34,29 @@ const fillModal = (modal, data) => {
   body.textContent = data.description;
 };
 
-const createPostElement = ({ modal }, item, clickedLinks) => {
+const createPostElement = ({ modal }, item, state) => {
   const link = document.createElement('a');
   link.href = item.link;
   link.target = '_blank';
   link.textContent = item.title;
   link.dataset.index = item.id;
-  if (!clickedLinks.includes(item.id)) {
+  if (!state.clickedLinks.includes(item.id)) {
     link.classList.add('font-weight-bold');
   }
 
   link.addEventListener('click', () => {
-    clickedLinks.push(item.id);
+    state.clickedLinks.push(item.id);
   });
 
   const modalBtn = document.createElement('button');
   modalBtn.classList.add('btn', 'btn-info');
   modalBtn.dataset.toggle = 'modal';
   modalBtn.dataset.target = '#postModal';
-  modalBtn.dataset.index = item.id;
   modalBtn.textContent = 'Preview';
 
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
-    clickedLinks.push(item.id);
+    state.clickedLinks.push(item.id);
   });
 
   const listItem = document.createElement('li');
@@ -81,8 +80,8 @@ const renderFeed = (elements, state) => {
     elements.feeds.appendChild(feedItem);
   });
 
-  const postItems = [...state.posts].map(
-    (post) => createPostElement(elements, post, state.clickedLinks),
+  const postItems = state.posts.map(
+    (post) => createPostElement(elements, post, state),
   );
   elements.posts.append(...postItems);
 };
@@ -91,11 +90,7 @@ const loadFeed = (state) => {
   axios
     .get(`${proxy}${state.url}`)
     .then((response) => {
-      const {
-        items,
-        title,
-        description,
-      } = parseData(response.data);
+      const { items, title, description } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
       state.url = '';
       state.appState = 'ready';
@@ -119,8 +114,7 @@ const reload = (state) => {
       ).map((item) => ({ ...item, id: _.uniqueId() }));
     });
     state.posts = [...newItems, ...state.posts];
-  })
-    .catch();
+  }).catch();
 
   setTimeout(() => {
     reload(state);
@@ -168,13 +162,12 @@ const runner = () => {
   i18next.init({
     lng: 'en',
     nsSeparator: false,
-    debug: true,
     resources,
   }).then(() => {
     const watchedState = onChange(state, (path, value) => {
       if (path === 'appState') {
         if (value === 'error') {
-          renderError(elements, state.error);
+          renderError(elements, watchedState.error);
         } else if (value === 'ready') {
           elements.input.setCustomValidity('');
           elements.form.reset();
@@ -183,15 +176,14 @@ const runner = () => {
         }
       } else if (path === 'formState') {
         if (value === 'invalid') {
-          renderError(elements, state.error);
+          renderError(elements, watchedState.error);
         } else if (value === 'validating') {
           elements.submit.setAttribute('disabled', true);
         }
       } else if (path === 'posts') {
-        renderFeed(elements, state);
+        renderFeed(elements, watchedState);
       } else if (path === 'clickedLinks') {
-        // doesn't trigger :(
-        const id = state.clickedLinks[state.clickedLinks.length - 1];
+        const id = watchedState.clickedLinks[watchedState.clickedLinks.length - 1];
         markAsRead(id);
       }
     });
