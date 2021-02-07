@@ -4,7 +4,7 @@ const parseData = (data) => {
   const error = rssDocument.querySelector('parsererror');
 
   if (error) {
-    const err = rssDocument.firstChild.nodeValue;
+    const err = error.textContent;
     throw new Error(err);
   }
 

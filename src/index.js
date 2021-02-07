@@ -114,11 +114,13 @@ const reload = (state) => {
       ).map((item) => ({ ...item, id: _.uniqueId() }));
     });
     state.posts = [...newItems, ...state.posts];
-  }).catch();
-
-  setTimeout(() => {
-    reload(state);
-  }, 5000);
+  })
+    .catch()
+    .finally(() => {
+      setTimeout(() => {
+        reload(state);
+      }, 5000);
+    });
 };
 
 const handleSubmit = (e, state) => {
