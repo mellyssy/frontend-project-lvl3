@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/js/dist/util.js';
 import 'bootstrap/js/dist/modal.js';
@@ -13,7 +14,8 @@ const proxy = 'https://rss-reader-proxy.herokuapp.com/';
 
 const renderError = (elements, key) => {
   elements.submit.removeAttribute('disabled');
-  const message = i18next.t(`errors.${key}`);
+  elements.input.removeAttribute('disabled');
+  const message = i18next.t(`errors.${key}`, 'something went wrong :(');
   elements.input.setCustomValidity(message);
   elements.error.textContent = message;
   elements.form.classList.add('was-validated');
@@ -40,12 +42,12 @@ const createPostElement = ({ modal }, item, state) => {
   link.target = '_blank';
   link.textContent = item.title;
   link.dataset.index = item.id;
-  if (!state.clickedLinks.includes(item.id)) {
+  if (!state.clickedLinks.has(item.id)) {
     link.classList.add('font-weight-bold');
   }
 
   link.addEventListener('click', () => {
-    state.clickedLinks.push(item.id);
+    state.clickedLinks.add(item.id);
   });
 
   const modalBtn = document.createElement('button');
@@ -56,7 +58,7 @@ const createPostElement = ({ modal }, item, state) => {
 
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
-    state.clickedLinks.push(item.id);
+    state.clickedLinks.add(item.id);
   });
 
   const listItem = document.createElement('li');
@@ -104,9 +106,10 @@ const loadFeed = (state) => {
 
 const reload = (state) => {
   const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-  Promise.all(promises).then((values) => {
-    const newItems = values.flatMap((response) => {
-      const { items } = parseData(response.data);
+  Promise.allSettled(promises).then((values) => {
+    console.log(values);
+    const newItems = values.flatMap(({ value }) => {
+      const { items } = parseData(value.data);
       return _.differenceWith(
         items,
         state.posts,
@@ -126,12 +129,12 @@ const reload = (state) => {
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
   state.url = formData.get('link');
-  state.appState = 'loading';
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
   try {
     validation(urls, state.url);
     state.formState = 'valid';
+    state.appState = 'loading';
     loadFeed(state);
   } catch (error) {
     state.error = error.message;
@@ -139,7 +142,7 @@ const handleSubmit = (e, state) => {
   }
 };
 
-const runner = () => {
+const init = () => {
   const elements = {
     form: document.querySelector('.rss-input'),
     input: document.querySelector('.rss-link'),
@@ -154,7 +157,7 @@ const runner = () => {
   const state = {
     feeds: [],
     posts: [],
-    clickedLinks: [],
+    clickedLinks: new Set(),
     error: '',
     url: '',
     appState: '',
@@ -165,37 +168,43 @@ const runner = () => {
     lng: 'en',
     nsSeparator: false,
     resources,
-  }).then(() => {
-    const watchedState = onChange(state, (path, value) => {
-      if (path === 'appState') {
-        if (value === 'error') {
-          renderError(elements, watchedState.error);
-        } else if (value === 'ready') {
-          elements.input.setCustomValidity('');
-          elements.form.reset();
-          elements.submit.removeAttribute('disabled');
-          elements.feedsContainer.classList.remove('d-none');
-        }
-      } else if (path === 'formState') {
-        if (value === 'invalid') {
-          renderError(elements, watchedState.error);
-        } else if (value === 'validating') {
-          elements.submit.setAttribute('disabled', true);
-        }
-      } else if (path === 'posts') {
-        renderFeed(elements, watchedState);
-      } else if (path === 'clickedLinks') {
-        const id = watchedState.clickedLinks[watchedState.clickedLinks.length - 1];
-        markAsRead(id);
-      }
-    });
-
-    elements.form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      handleSubmit(e, watchedState);
-    });
-    reload(watchedState);
   });
+
+  return [elements, state];
 };
 
-runner();
+const run = (elements, state) => {
+  const watchedState = onChange(state, (path, value) => {
+    if (path === 'appState') {
+      if (value === 'error') {
+        renderError(elements, watchedState.error);
+      } else if (value === 'ready') {
+        elements.input.setCustomValidity('');
+        elements.form.reset();
+        elements.submit.removeAttribute('disabled');
+        elements.input.removeAttribute('disabled');
+        elements.feedsContainer.classList.remove('d-none');
+      } else if (value === 'loading') {
+        elements.submit.setAttribute('disabled', true);
+        elements.input.setAttribute('disabled', true);
+      }
+    } else if (path === 'formState') {
+      if (value === 'invalid') {
+        renderError(elements, watchedState.error);
+      }
+    } else if (path === 'posts') {
+      renderFeed(elements, watchedState);
+    } else if (path === 'clickedLinks') {
+      const arr = [...state.clickedLinks];
+      markAsRead(arr[arr.length - 1]);
+    }
+  });
+  elements.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleSubmit(e, watchedState);
+  });
+  reload(watchedState);
+};
+
+const [elements, state] = init();
+run(elements, state);

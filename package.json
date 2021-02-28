@@ -2,7 +2,6 @@
   "name": "frontend-project-lvl3",
   "version": "1.0.0",
   "description": "RSS-reader with live refresh",
-  "main": "index.js",
   "scripts": {
     "build": "rm -rf dist && webpack",
     "dev": "webpack serve  --watch"
