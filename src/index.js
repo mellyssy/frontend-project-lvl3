@@ -1,7 +1,4 @@
 /* eslint-disable no-param-reassign */
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/js/dist/util.js';
-import 'bootstrap/js/dist/modal.js';
 import onChange from 'on-change';
 import axios from 'axios';
 import i18next from 'i18next';
@@ -9,8 +6,6 @@ import _ from 'lodash';
 import validation from './validation.js';
 import parseData from './parser.js';
 import resources from './locales.js';
-
-const proxy = 'https://rss-reader-proxy.herokuapp.com/';
 
 const renderError = (elements, key) => {
   elements.submit.removeAttribute('disabled');
@@ -42,6 +37,7 @@ const createPostElement = ({ modal }, item, state) => {
   link.target = '_blank';
   link.textContent = item.title;
   link.dataset.index = item.id;
+
   if (!state.clickedLinks.has(item.id)) {
     link.classList.add('font-weight-bold');
   }
@@ -55,7 +51,6 @@ const createPostElement = ({ modal }, item, state) => {
   modalBtn.dataset.toggle = 'modal';
   modalBtn.dataset.target = '#postModal';
   modalBtn.textContent = 'Preview';
-
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
     state.clickedLinks.add(item.id);
@@ -81,16 +76,17 @@ const renderFeed = (elements, state) => {
     feedItem.append(feedTitle, feedDescription);
     elements.feeds.appendChild(feedItem);
   });
-
   const postItems = state.posts.map(
     (post) => createPostElement(elements, post, state),
   );
   elements.posts.append(...postItems);
 };
 
+const addProxy = (link) => `https://rss-reader-proxy.herokuapp.com/${link}`;
+
 const loadFeed = (state) => {
   axios
-    .get(`${proxy}${state.url}`)
+    .get(addProxy(state.url))
     .then((response) => {
       const { items, title, description } = parseData(response.data);
       state.feeds.push({ url: state.url, title, description });
@@ -105,20 +101,18 @@ const loadFeed = (state) => {
 };
 
 const reload = (state) => {
-  const promises = state.feeds.map(({ url }) => axios.get(`${proxy}${url}`));
-  Promise.allSettled(promises).then((values) => {
-    console.log(values);
-    const newItems = values.flatMap(({ value }) => {
-      const { items } = parseData(value.data);
-      return _.differenceWith(
-        items,
-        state.posts,
-        (arrVal, othVal) => arrVal.title === othVal.title,
-      ).map((item) => ({ ...item, id: _.uniqueId() }));
-    });
+  const promises = state.feeds.map(({ url }) => axios.get(addProxy(url)).then((value) => {
+    const { items } = parseData(value.data);
+    return _.differenceWith(
+      items,
+      state.posts,
+      (arrVal, othVal) => arrVal.title === othVal.title,
+    ).map((item) => ({ ...item, id: _.uniqueId() }));
+  }));
+  Promise.all(promises).then((value) => {
+    const newItems = value.flatMap((v) => v);
     state.posts = [...newItems, ...state.posts];
   })
-    .catch()
     .finally(() => {
       setTimeout(() => {
         reload(state);
@@ -128,7 +122,7 @@ const reload = (state) => {
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
-  state.url = formData.get('link');
+  state.url = formData.get('link').trim();
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
   try {
@@ -141,8 +135,11 @@ const handleSubmit = (e, state) => {
     state.formState = 'invalid';
   }
 };
-
-const init = () => {
+const run = () => i18next.init({
+  lng: 'en',
+  nsSeparator: false,
+  resources,
+}).then(() => {
   const elements = {
     form: document.querySelector('.rss-input'),
     input: document.querySelector('.rss-link'),
@@ -163,17 +160,6 @@ const init = () => {
     appState: '',
     formState: '',
   };
-
-  i18next.init({
-    lng: 'en',
-    nsSeparator: false,
-    resources,
-  });
-
-  return [elements, state];
-};
-
-const run = (elements, state) => {
   const watchedState = onChange(state, (path, value) => {
     if (path === 'appState') {
       if (value === 'error') {
@@ -182,15 +168,13 @@ const run = (elements, state) => {
         elements.input.setCustomValidity('');
         elements.form.reset();
         elements.submit.removeAttribute('disabled');
-        elements.input.removeAttribute('disabled');
         elements.feedsContainer.classList.remove('d-none');
-      } else if (value === 'loading') {
-        elements.submit.setAttribute('disabled', true);
-        elements.input.setAttribute('disabled', true);
       }
     } else if (path === 'formState') {
       if (value === 'invalid') {
         renderError(elements, watchedState.error);
+      } else if (value === 'validating') {
+        elements.submit.setAttribute('disabled', true);
       }
     } else if (path === 'posts') {
       renderFeed(elements, watchedState);
@@ -199,12 +183,12 @@ const run = (elements, state) => {
       markAsRead(arr[arr.length - 1]);
     }
   });
+
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
     handleSubmit(e, watchedState);
   });
   reload(watchedState);
-};
+});
 
-const [elements, state] = init();
-run(elements, state);
+export default run;
