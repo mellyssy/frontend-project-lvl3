@@ -110,7 +110,7 @@ const reload = (state) => {
     ).map((item) => ({ ...item, id: _.uniqueId() }));
   }));
   Promise.all(promises).then((value) => {
-    const newItems = value.flatMap((v) => v);
+    const newItems = _.flatten(value);
     state.posts = [...newItems, ...state.posts];
   })
     .finally(() => {
@@ -168,13 +168,15 @@ const run = () => i18next.init({
         elements.input.setCustomValidity('');
         elements.form.reset();
         elements.submit.removeAttribute('disabled');
+        elements.input.removeAttribute('disabled');
         elements.feedsContainer.classList.remove('d-none');
+      } else if (value === 'loading') {
+        elements.submit.setAttribute('disabled', true);
+        elements.input.setAttribute('disabled', true);
       }
     } else if (path === 'formState') {
       if (value === 'invalid') {
         renderError(elements, watchedState.error);
-      } else if (value === 'validating') {
-        elements.submit.setAttribute('disabled', true);
       }
     } else if (path === 'posts') {
       renderFeed(elements, watchedState);
