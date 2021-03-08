@@ -2,6 +2,7 @@
   "name": "@hexlet/code",
   "version": "1.0.0",
   "description": "RSS-reader with live refresh",
+  "main": "src/index.js",
   "scripts": {
     "build": "rm -rf dist && webpack",
     "dev": "webpack serve  --watch"
