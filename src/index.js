@@ -123,7 +123,7 @@ const reload = (state) => {
 
 const handleSubmit = (e, state) => {
   const formData = new FormData(e.target);
-  state.url = formData.get('link').trim();
+  state.url = formData.get('url').trim();
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
   try {
