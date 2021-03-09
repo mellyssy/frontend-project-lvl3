@@ -1,4 +1,4 @@
-![hexlet-check](https://github.com/mellyssy/frontend-project-lvl3/workflows/hexlet-check/badge.svg) ![Setup and run](https://github.com/mellyssy/frontend-project-lvl3/workflows/Setup%20and%20run/badge.svg) [![Maintainability](https://api.codeclimate.com/v1/badges/bdea7569e925f603b0bc/maintainability)](https://codeclimate.com/github/mellyssy/frontend-project-lvl3/maintainability) 
+[![hexlet-check](https://github.com/mellyssy/frontend-project-lvl3/workflows/hexlet-check/badge.svg)](https://github.com/mellyssy/frontend-project-lvl3/actions/workflows/hexlet-check.yml) [![Setup and run](https://github.com/mellyssy/frontend-project-lvl3/workflows/Setup%20and%20run/badge.svg)](https://github.com/mellyssy/frontend-project-lvl3/actions/workflows/nodejs.yml) [![Maintainability](https://api.codeclimate.com/v1/badges/bdea7569e925f603b0bc/maintainability)](https://codeclimate.com/github/mellyssy/frontend-project-lvl3/maintainability) 
 
 # RSS агрегатор 
 
@@ -9,3 +9,4 @@
 RSS-лента новостей с автоматическим обновлением.
 
 В проекте используются: JavaScript, AJAX, Webpack, Bootstrap.
+
