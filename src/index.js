@@ -11,7 +11,7 @@ import resources from './locales.js';
 const renderError = (elements, key, i18e) => {
   elements.submit.removeAttribute('disabled');
   elements.input.removeAttribute('disabled');
-  const message = i18e.t(`errors.${key}`, 'something went wrong :(');
+  const message = i18e.t(`errors.${key}`, 'Ресурс не содержит валидный RSS');
   elements.input.setCustomValidity(message);
   elements.error.textContent = message;
   elements.form.classList.add('was-validated');
