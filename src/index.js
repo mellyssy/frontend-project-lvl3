@@ -83,7 +83,7 @@ const renderFeed = (elements, state) => {
   elements.posts.append(...postItems);
 };
 
-const addProxy = (link) => `https://hexlet-allorigins.herokuapp.com/get?disableCache=true&url=${link}`;
+const addProxy = (link) => `https://hexlet-allorigins.herokuapp.com/get?disableCache=true&url=${encodeURIComponent(link)}`;
 
 const loadFeed = (state) => {
   axios
