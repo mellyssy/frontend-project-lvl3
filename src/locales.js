@@ -2,9 +2,9 @@ export default {
   en: {
     translation: {
       errors: {
-        'this must be a valid URL': 'URL is invalid, check example to see valid URL',
-        'this is a required field': 'Don\'t forget to put in URL',
-        'feed is in the list': 'You can\'t add feed twice',
+        'this must be a valid URL': 'Ссылка должна быть валидным URL',
+        'this is a required field': 'Please fill out this field.',
+        'feed is in the list': 'RSS уже существует',
         'Network Error': 'Network error, check your connection',
       },
     },
