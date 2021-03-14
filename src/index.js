@@ -8,10 +8,10 @@ import validation from './validation.js';
 import parseData from './parser.js';
 import resources from './locales.js';
 
-const renderError = (elements, key) => {
+const renderError = (elements, key, i18e) => {
   elements.submit.removeAttribute('disabled');
   elements.input.removeAttribute('disabled');
-  const message = i18next.t(`errors.${key}`, 'something went wrong :(');
+  const message = i18e.t(`errors.${key}`, 'something went wrong :(');
   elements.input.setCustomValidity(message);
   elements.error.textContent = message;
   elements.form.classList.add('was-validated');
@@ -83,13 +83,13 @@ const renderFeed = (elements, state) => {
   elements.posts.append(...postItems);
 };
 
-const addProxy = (link) => `https://rss-reader-proxy.herokuapp.com/${link}`;
+const addProxy = (link) => `https://hexlet-allorigins.herokuapp.com/get?disableCache=true&url=${link}`;
 
 const loadFeed = (state) => {
   axios
     .get(addProxy(state.url))
     .then((response) => {
-      const { items, title, description } = parseData(response.data);
+      const { items, title, description } = parseData(response.data.contents);
       state.feeds.push({ url: state.url, title, description });
       state.url = '';
       state.appState = 'ready';
@@ -102,18 +102,16 @@ const loadFeed = (state) => {
 };
 
 const reload = (state) => {
-  const promises = state.feeds.map(({ url }) => axios.get(addProxy(url)).then((value) => {
-    const { items } = parseData(value.data);
-    return _.differenceWith(
+  const promises = state.feeds.map(({ url }) => axios.get(addProxy(url)).then((response) => {
+    const { items } = parseData(response.data.contents);
+    const newItems = _.differenceWith(
       items,
       state.posts,
       (arrVal, othVal) => arrVal.title === othVal.title,
     ).map((item) => ({ ...item, id: _.uniqueId() }));
-  }));
-  Promise.all(promises).then((value) => {
-    const newItems = _.flatten(value);
     state.posts = [...newItems, ...state.posts];
-  })
+  }));
+  Promise.all(promises).then()
     .finally(() => {
       setTimeout(() => {
         reload(state);
@@ -126,72 +124,77 @@ const handleSubmit = (e, state) => {
   state.url = formData.get('url').trim();
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
-  try {
-    validation(urls, state.url);
-    state.formState = 'valid';
-    state.appState = 'loading';
-    loadFeed(state);
-  } catch (error) {
-    state.error = error.message;
+  const validationError = validation(urls, state.url);
+  if (validationError) {
+    state.error = validationError;
     state.formState = 'invalid';
+    return;
   }
+  state.formState = 'valid';
+  state.appState = 'loading';
+  loadFeed(state);
 };
-const run = () => i18next.init({
-  lng: 'en',
-  nsSeparator: false,
-  resources,
-}).then(() => {
-  const elements = {
-    form: document.querySelector('.rss-input'),
-    input: document.querySelector('.rss-link'),
-    submit: document.querySelector('.submit'),
-    error: document.querySelector('.invalid-feedback'),
-    feedsContainer: document.querySelector('.feeds-container'),
-    feeds: document.querySelector('.feeds'),
-    posts: document.querySelector('.posts'),
-    modal: document.querySelector('#postModal'),
-  };
 
-  const state = {
-    feeds: [],
-    posts: [],
-    clickedLinks: new Set(),
-    error: '',
-    url: '',
-    appState: '',
-    formState: '',
-  };
-  const watchedState = onChange(state, (path, value) => {
-    if (path === 'appState') {
-      if (value === 'error') {
-        renderError(elements, watchedState.error);
-      } else if (value === 'ready') {
-        elements.input.setCustomValidity('');
-        elements.form.reset();
-        elements.submit.removeAttribute('disabled');
-        elements.input.removeAttribute('disabled');
-        elements.feedsContainer.classList.remove('d-none');
-      } else if (value === 'loading') {
-        elements.submit.setAttribute('disabled', true);
-        elements.input.setAttribute('disabled', true);
-      }
-    } else if (path === 'formState') {
-      if (value === 'invalid') {
-        renderError(elements, watchedState.error);
-      }
-    } else if (path === 'posts') {
-      renderFeed(elements, watchedState);
-    } else if (path === 'clickedLinks') {
-      const arr = [...state.clickedLinks];
-      markAsRead(arr[arr.length - 1]);
-    }
-  });
+const run = () => {
+  const i18nextInstance = i18next.createInstance();
 
-  elements.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    handleSubmit(e, watchedState);
+  return i18nextInstance.init({
+    lng: 'en',
+    nsSeparator: false,
+    resources,
+  }).then(() => {
+    const elements = {
+      form: document.querySelector('.rss-input'),
+      input: document.querySelector('.rss-link'),
+      submit: document.querySelector('.submit'),
+      error: document.querySelector('.invalid-feedback'),
+      feedsContainer: document.querySelector('.feeds-container'),
+      feeds: document.querySelector('.feeds'),
+      posts: document.querySelector('.posts'),
+      modal: document.querySelector('#postModal'),
+    };
+
+    const state = {
+      feeds: [],
+      posts: [],
+      clickedLinks: new Set(),
+      error: '',
+      url: '',
+      appState: '',
+      formState: '',
+    };
+    const watchedState = onChange(state, (path, value) => {
+      if (path === 'appState') {
+        if (value === 'error') {
+          renderError(elements, watchedState.error, i18nextInstance);
+        } else if (value === 'ready') {
+          elements.input.setCustomValidity('');
+          elements.form.reset();
+          elements.submit.removeAttribute('disabled');
+          elements.input.removeAttribute('disabled');
+          elements.feedsContainer.classList.remove('d-none');
+        } else if (value === 'loading') {
+          elements.submit.setAttribute('disabled', true);
+          elements.input.setAttribute('disabled', true);
+        }
+      } else if (path === 'formState') {
+        if (value === 'invalid') {
+          renderError(elements, watchedState.error, i18nextInstance);
+        }
+      } else if (path === 'posts') {
+        renderFeed(elements, watchedState);
+      } else if (path === 'clickedLinks') {
+        const arr = [...state.clickedLinks];
+        markAsRead(arr[arr.length - 1]);
+      }
+    });
+
+    elements.form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSubmit(e, watchedState);
+    });
+    reload(watchedState);
   });
-  reload(watchedState);
-});
+};
 
 export default run;
