@@ -96,7 +96,7 @@ const loadFeed = (state) => {
       const itemsWithId = items.map((item) => ({ ...item, id: _.uniqueId() }));
       state.posts = [...itemsWithId, ...state.posts];
     }).catch((err) => {
-      state.error = err;
+      state.error = err.message;
       state.appState = 'error';
     });
 };
