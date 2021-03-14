@@ -148,6 +148,7 @@ const run = () => {
       input: document.querySelector('.rss-link'),
       submit: document.querySelector('.submit'),
       error: document.querySelector('.invalid-feedback'),
+      success: document.querySelector('.valid-feedback'),
       feedsContainer: document.querySelector('.feeds-container'),
       feeds: document.querySelector('.feeds'),
       posts: document.querySelector('.posts'),
@@ -169,6 +170,8 @@ const run = () => {
           renderError(elements, watchedState.error, i18nextInstance);
         } else if (value === 'ready') {
           elements.input.setCustomValidity('');
+          elements.success.textContent = 'RSS успешно загружен';
+          elements.form.classList.add('was-validated');
           elements.form.reset();
           elements.submit.removeAttribute('disabled');
           elements.input.removeAttribute('disabled');
