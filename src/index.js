@@ -124,10 +124,11 @@ const reload = (state) => {
 };
 
 const initValidation = () => {
+  const schema = yup.string().required().url();
   const validate = (urls, url) => {
-    const schema = yup.string().required().url().notOneOf(urls);
+    const currSchema = schema.notOneOf(urls);
     try {
-      schema.validateSync(url);
+      currSchema.validateSync(url);
     } catch (error) {
       return error.message;
     }
