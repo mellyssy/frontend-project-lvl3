@@ -178,11 +178,11 @@ const run = () => {
           elements.form.classList.add('was-validated');
           elements.form.reset();
           elements.submit.removeAttribute('disabled');
-          elements.input.removeAttribute('disabled');
+          elements.input.removeAttribute('readonly');
           elements.feedsContainer.classList.remove('d-none');
         } else if (value === 'loading') {
           elements.submit.setAttribute('disabled', true);
-          elements.input.setAttribute('disabled', true);
+          elements.input.setAttribute('readonly', true);
         }
       } else if (path === 'formState') {
         if (value === 'invalid') {
