@@ -4,7 +4,8 @@ export default {
       errors: {
         'this must be a valid URL': 'Ссылка должна быть валидным URL',
         'this is a required field': 'Please fill out this field.',
-        'feed is in the list': 'RSS уже существует',
+        'notOneOf error': 'RSS уже существует',
+        'default validation error': 'something went wrong :(',
         'Network Error': 'Ошибка сети',
         'parser error': 'Ресурс не содержит валидный RSS',
       },

@@ -157,8 +157,8 @@ const run = () => {
   const i18nextInstance = i18next.createInstance();
   yup.setLocale({
     mixed: {
-      default: 'something went wrong :(',
-      notOneOf: 'feed is in the list',
+      default: 'default validation error',
+      notOneOf: 'notOneOf error',
     },
   });
   const validate = initValidation();
