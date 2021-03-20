@@ -10,7 +10,7 @@ import resources from './locales.js';
 
 const renderError = (elements, key, i18e) => {
   elements.submit.removeAttribute('disabled');
-  elements.input.removeAttribute('disabled');
+  elements.input.removeAttribute('readonly');
   const message = i18e.t(`errors.${key}`, 'something went wrong :(');
   elements.input.setCustomValidity(message);
   elements.error.textContent = message;
