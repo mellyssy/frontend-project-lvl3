@@ -4,8 +4,7 @@ const parseData = (data) => {
   const error = rssDocument.querySelector('parsererror');
 
   if (error) {
-    const err = error.textContent;
-    throw new Error(err);
+    throw new Error('parser error');
   }
 
   const title = rssDocument.querySelector('channel title').textContent;

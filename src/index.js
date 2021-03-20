@@ -11,7 +11,7 @@ import resources from './locales.js';
 const renderError = (elements, key, i18e) => {
   elements.submit.removeAttribute('disabled');
   elements.input.removeAttribute('disabled');
-  const message = i18e.t(`errors.${key}`, 'Ресурс не содержит валидный RSS');
+  const message = i18e.t(`errors.${key}`, 'something went wrong :(');
   elements.input.setCustomValidity(message);
   elements.error.textContent = message;
   elements.form.classList.add('was-validated');
@@ -96,7 +96,11 @@ const loadFeed = (state) => {
       const itemsWithId = items.map((item) => ({ ...item, id: _.uniqueId() }));
       state.posts = [...itemsWithId, ...state.posts];
     }).catch((err) => {
-      state.error = err.message;
+      if (err.isAxiosError) {
+        state.error = 'Network Error';
+      } else {
+        state.error = err.message;
+      }
       state.appState = 'error';
     });
 };

@@ -6,6 +6,7 @@ export default {
         'this is a required field': 'Please fill out this field.',
         'feed is in the list': 'RSS уже существует',
         'Network Error': 'Ошибка сети',
+        'parser error': 'Ресурс не содержит валидный RSS',
       },
     },
   },
