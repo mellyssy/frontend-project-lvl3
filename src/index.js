@@ -4,7 +4,7 @@ import onChange from 'on-change';
 import axios from 'axios';
 import i18next from 'i18next';
 import _ from 'lodash';
-import validation from './validation.js';
+import * as yup from 'yup';
 import parseData from './parser.js';
 import resources from './locales.js';
 
@@ -115,7 +115,7 @@ const reload = (state) => {
     ).map((item) => ({ ...item, id: _.uniqueId() }));
     state.posts = [...newItems, ...state.posts];
   }));
-  Promise.all(promises).then()
+  Promise.all(promises)
     .finally(() => {
       setTimeout(() => {
         reload(state);
@@ -123,12 +123,24 @@ const reload = (state) => {
     });
 };
 
-const handleSubmit = (e, state) => {
+const validation = (schema, urls, url) => {
+  const currSchema = schema.notOneOf(urls);
+
+  try {
+    currSchema.validateSync(url);
+  } catch (error) {
+    return error.message;
+  }
+
+  return false;
+};
+
+const handleSubmit = (e, state, schema) => {
   const formData = new FormData(e.target);
   state.url = formData.get('url').trim();
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
-  const validationError = validation(urls, state.url);
+  const validationError = validation(schema, urls, state.url);
   if (validationError) {
     state.error = validationError;
     state.formState = 'invalid';
@@ -141,7 +153,13 @@ const handleSubmit = (e, state) => {
 
 const run = () => {
   const i18nextInstance = i18next.createInstance();
-
+  yup.setLocale({
+    mixed: {
+      default: 'something went wrong :(',
+      notOneOf: 'feed is in the list',
+    },
+  });
+  const schema = yup.string().required().url();
   return i18nextInstance.init({
     lng: 'en',
     nsSeparator: false,
@@ -198,7 +216,7 @@ const run = () => {
 
     elements.form.addEventListener('submit', (e) => {
       e.preventDefault();
-      handleSubmit(e, watchedState);
+      handleSubmit(e, watchedState, schema);
     });
     reload(watchedState);
   });
