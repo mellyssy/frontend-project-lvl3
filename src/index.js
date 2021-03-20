@@ -123,24 +123,25 @@ const reload = (state) => {
     });
 };
 
-const validation = (schema, urls, url) => {
-  const currSchema = schema.notOneOf(urls);
-
-  try {
-    currSchema.validateSync(url);
-  } catch (error) {
-    return error.message;
-  }
-
-  return false;
+const initValidation = () => {
+  const validate = (urls, url) => {
+    const schema = yup.string().required().url().notOneOf(urls);
+    try {
+      schema.validateSync(url);
+    } catch (error) {
+      return error.message;
+    }
+    return false;
+  };
+  return validate;
 };
 
-const handleSubmit = (e, state, schema) => {
+const handleSubmit = (e, state, validate) => {
   const formData = new FormData(e.target);
   state.url = formData.get('url').trim();
   state.formState = 'validating';
   const urls = state.feeds.map((o) => o.url);
-  const validationError = validation(schema, urls, state.url);
+  const validationError = validate(urls, state.url);
   if (validationError) {
     state.error = validationError;
     state.formState = 'invalid';
@@ -159,7 +160,7 @@ const run = () => {
       notOneOf: 'feed is in the list',
     },
   });
-  const schema = yup.string().required().url();
+  const validate = initValidation();
   return i18nextInstance.init({
     lng: 'en',
     nsSeparator: false,
@@ -216,7 +217,7 @@ const run = () => {
 
     elements.form.addEventListener('submit', (e) => {
       e.preventDefault();
-      handleSubmit(e, watchedState, schema);
+      handleSubmit(e, watchedState, validate);
     });
     reload(watchedState);
   });
