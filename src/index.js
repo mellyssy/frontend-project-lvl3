@@ -51,7 +51,7 @@ const createPostElement = ({ modal }, item, state) => {
   modalBtn.classList.add('btn', 'btn-info');
   modalBtn.dataset.toggle = 'modal';
   modalBtn.dataset.target = '#postModal';
-  modalBtn.textContent = 'Preview';
+  modalBtn.textContent = 'Просмотр';
   modalBtn.addEventListener('click', () => {
     fillModal(modal, item);
     state.clickedLinks.add(item.id);
